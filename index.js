@@ -1,29 +1,91 @@
-// these are the variables you can use as inputs to your algorithms
-console.log(fxhash)   // the 64 chars hex number fed to your algorithm
-console.log(fxrand()) // deterministic PRNG function, use it instead of Math.random()
+console.log(fxhash)
+console.log(fxrand())
 
-// note about the fxrand() function 
-// when the "fxhash" is always the same, it will generate the same sequence of
-// pseudo random numbers, always
+const sp = new URLSearchParams(window.location.search);
+console.log(sp);
 
-//----------------------
-// defining features
-//----------------------
-// You can define some token features by populating the $fxhashFeatures property
-// of the window object.
-// More about it in the guide, section features:
-// [https://fxhash.xyz/articles/guide-mint-generative-token#features]
-//
-// window.$fxhashFeatures = {
-//   "Background": "Black",
-//   "Number of lines": 10,
-//   "Inverted": true
-// }
+// this is how to define parameters
+$fx.params([
+  {
+    id: "number_id",
+    name: "A number",
+    type: "number",
+    default: 1.2,
+    options: {
+      min: -2,
+      max: 10,
+      step: 0.1,
+    },
+  },
+  {
+    id: "select_id",
+    name: "A selection",
+    type: "select",
+    default: "pear",
+    options: {
+      options: ["apple", "orange", "pear"],
+    }
+  },
+  {
+    id: "color_id",
+    name: "A color",
+    type: "color",
+    default: "ff0000",
+  },
+  {
+    id: "boolean_id",
+    name: "A boolean",
+    type: "boolean",
+    default: true,
+  },
+  {
+    id: "string_id",
+    name: "A string",
+    type: "string",
+    default: "hello",
+    options: {
+      minLength: 1,
+      maxLength: 5
+    }
+  },
+]);
 
-// this code writes the values to the DOM as an example
-const container = document.createElement("div")
-container.innerText = `
-  random hash: ${fxhash}\n
-  some pseudo random values: [ ${fxrand()}, ${fxrand()}, ${fxrand()}, ${fxrand()}, ${fxrand()},... ]\n
+// this is how features can be defined
+$fx.features({
+  "A random feature": Math.floor($fx.rand() * 10),
+  "A random boolean": $fx.rand() > 0.5,
+  "A random string": ["A", "B", "C", "D"].at(Math.floor($fx.rand()*4)),
+  "Feature from params, its a number": $fx.getParam("number_id"),
+})
+
+// log the parameters, for debugging purposes, artists won't have to do that
+console.log("Current param values:")
+// Raw deserialize param values 
+console.log($fx.getRawParams())
+// Added addtional transformation to the parameter for easier usage
+// e.g. color.hex.rgba, color.obj.rgba.r, color.arr.rgb[0] 
+console.log($fx.getParams())
+
+// how to read a single raw parameter
+console.log("Single raw value:")
+console.log($fx.getRawParam("color_id"));
+// how to read a single transformed parameter
+console.log("Single transformed value:")
+console.log($fx.getParam("color_id"));
+
+// update the document based on the parameters
+document.body.style.background = $fx.getParam("color_id").hex.rgba
+document.body.innerHTML = `
+<p>
+url: ${window.location.href}
+</p>
+<p>
+hash: ${$fx.hash}
+</p>
+<p>
+params: 
+</p>
+<pre>
+${JSON.stringify($fx.getRawParams(), null, 2)}
+</pre>
 `
-document.body.prepend(container)

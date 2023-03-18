@@ -1,3 +1,5 @@
+> **⚠️ Disclaimer**: This project is still in development. Some changes will be introduced over the next weeks, so please use this project with caution.
+
 FXHASH Generative Token simplest boilerplate
 ================
 
@@ -5,28 +7,41 @@ This is the (arguably) simplest boilerplate to implement a Generative Token on [
 
 Before diving into the development of your token, we recommend reading the [Guide to mint a Generative Token](https://fxhash.xyz/articles/guide-mint-generative-token) to get some understanding of the process.
 
-If you are looking for a boilerplate that handles the compression to a ZIP file at the cost of running a command, packaging modules, minifying, you can use the [fxhash webpack boilerplate](https://github.com/fxhash/fxhash-webpack-boilerplate) instead.
-
+If you are looking for a boilerplate that handles the compression to a ZIP file at the cost of running a command, packaging modules, minifying, you can use the [fxhash params boilerplate](https://github.com/fxhash/params-boilerplate) instead. The boilerplate also comes with fx(lens). An interactive environment to view, tweak and develop generative tokens for the fx(hash) platform.
 
 # Installation
 
 Clone the repository on your machine and move to the directory
 ```sh
-$ git clone https://github.com/fxhash/fxhash-simple-boilerplate.git your_folder && cd your_folder
+$ git clone https://github.com/fxhash/params-simple-boilerplate.git your_folder && cd your_folder
 ```
 
 # fxhash snippet
-
 fxhash requires you to use a javascript code snippet so that the platform can inject some code when tokens will be generated from your Generative Token. The code snippet is already in the `index.html` file of this boilerplate, so you don't have to add it yourself.
 
 **During the development stages, the snippet will generate a random hash each time the page is refreshed**. This way, it helps you reproduce the conditions in which your token will be executed on fxhash.
 
-It creates 2 variables:
-- `fxhash`: a random 64 characters hexadecimal string. This particular variable will be hardcoded with a static hash when someone mints a token from your GT
-- `fxrand()`: a PRNG function that generates deterministic PRN between 0 and 1. **Simply use it instead of Math.random()**.
+The code snippet exposes the `$fx` object with the following structure: 
 
-*The index.js of this boilerplate quickly demonstrates how to use these*.
+```typescript
+{
+  hash: String, // a random 64 characters hexadecimal string. This particular variable will be hardcoded with a static hash when someone mints a token from your GT
+  rand: () => Number, // a PRNG function that generates deterministic PRN between 0 and 1. Simply use it instead of Math.random().
+  preview: () => void, // trigger for capture module
+  isPreview: Boolean, // is TRUE when capture module is running the project
+  params: (definitions) => void, // sets your projects fx(params) definitions
+  getParam: (id: String) => any, // get transformed fx(params) value by id
+  getParams: () => any, // get all transformed fx(params) values
+  getRawParam: (id: String) => any, // get raw fx(params) value by id 
+  getRawParams: () => any, // get all raw fx(params) values
+  getDefinitions: () => any, // get all fx(params) definitions
+  features: (features) => void, // sets your projects features
+  getFeature: (id: String) => any, // get feature by id
+  getFeatures: () => any, // get all features
+}
+```
 
+*The index.js of this boilerplate quickly demonstrates how to use the whole "SDK"*.
 
 # How do Generative Tokens work
 

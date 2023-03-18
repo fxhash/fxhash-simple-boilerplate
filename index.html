@@ -2,10 +2,12 @@
 <html>
   <head>
     <title>FXHASH project</title>
+    <meta charset="utf-8">
     <script id="fxhash-snippet">
       //---- do not edit the following code (you can indent as you wish)
+      let search = new URLSearchParams(window.location.search)
       let alphabet = "123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ"
-      var fxhash = "oo" + Array(49).fill(0).map(_=>alphabet[(Math.random()*alphabet.length)|0]).join('')
+      var fxhash = search.get('fxhash') || "oo" + Array(49).fill(0).map(_=>alphabet[(Math.random()*alphabet.length)|0]).join('')
       let b58dec = str=>[...str].reduce((p,c)=>p*alphabet.length+alphabet.indexOf(c)|0, 0)
       let fxhashTrunc = fxhash.slice(2)
       let regex = new RegExp(".{" + ((fxhash.length/4)|0) + "}", 'g')
@@ -25,11 +27,183 @@
       var fxrand = sfc32(...hashes)
       // true if preview mode active, false otherwise
       // you can append preview=1 to the URL to simulate preview active
-      var isFxpreview = new URLSearchParams(window.location.search).get('preview') === "1"
+      var isFxpreview = search.get('preview') === "1"
       // call this method to trigger the preview
       function fxpreview() {
         console.log("fxhash: TRIGGER PREVIEW")
       }
+
+      //
+      // NEW: v2 of the fxhash SDK lol
+      //
+      // get the byte params from the URL
+      let fxparams = search.get('fxparams')
+      fxparams = fxparams ? fxparams.replace("0x", "") : fxparams
+
+      // the parameter processor, used to parse fxparams
+      const processors = {
+        number: {
+          deserialize: (input) => {
+            const view = new DataView(new ArrayBuffer(8))
+            for (let i = 0; i < 8; i++) {
+              view.setUint8(i, parseInt(input.substring(i * 2, i * 2 + 2), 16))
+            }
+            return view.getFloat64(0)
+          },
+          bytesLength: () => 8,
+        },
+        boolean: {
+          // if value is "00" -> 0 -> false, otherwise we consider it's 1
+          deserialize: (input) => {
+            return input === "00" ? false : true
+          },
+          bytesLength: () => 1,
+        },
+        color: {
+          deserialize: (input) => input,
+          bytesLength: () => 4,
+          transform: (input) => {
+            const r = parseInt(input.slice(0,2), 16)
+            const g = parseInt(input.slice(2,4), 16)
+            const b = parseInt(input.slice(4,6), 16)
+            const a = parseInt(input.slice(6,8), 16)
+            return {
+              hex: {
+                rgb: '#' + input.slice(0,6),
+                rgba: '#' + input,
+              },
+              obj: {
+                rgb: { r, g, b},
+                rgba: { r, g, b, a},
+              },
+              arr: {
+                rgb: [r,g,b],
+                rgba: [r,g,b,a],
+              }
+            }
+          },
+        },
+        string: {
+          deserialize: (input) => {
+            const hx = input.match(/.{1,4}/g) || []
+            let rtn = ""
+            for (let i = 0; i < hx.length; i++) {
+              const int = parseInt(hx[i], 16)
+              if (int === 0) break
+              rtn += String.fromCharCode(int)
+            }
+            return rtn
+          },
+          bytesLength: () => 64 * 2,
+        },
+        select: {
+          deserialize: (input, definition) => {
+            return definition.options.options[parseInt(input, 16)] || definition.default
+          },
+          bytesLength: () => 1,
+        }
+      }
+
+      // takes the parameters as bytes and outputs an object with the
+      // deserialized parameters, identified by their id in an object
+      const deserializeParams = (bytes, definition) => {
+        const params = {}
+        for (const def of definition) {
+          // if we don't have any parameters defined in the URL, set the 
+          // default value and move on
+          if (!bytes) {
+            params[def.id] = def.default
+            continue
+          }
+          const processor = processors[def.type]
+          // extract the length from the bytes & shift the initial bytes string
+          const valueBytes = bytes.substring(0, processor.bytesLength() * 2)
+          bytes = bytes.substring(processor.bytesLength() * 2)
+          // deserialize the bytes into the params
+          params[def.id] = processor.deserialize(valueBytes, def)
+          // todo: make sure the value is correct based on constraints
+        }
+        return params
+      }
+
+      const transformParamValues = (values, definitions) => {
+        const paramValues = {}
+        for (const def of definitions) {
+          const processor = processors[def.type]
+          const value = values[def.id]
+          // deserialize the bytes into the params
+          paramValues[def.id] = processor.transform ? processor.transform(value) : value;
+        }
+        return paramValues; 
+      }
+
+      window.$fx = {
+        // where params def & features will be stored
+        _params: undefined,
+        _features: undefined,
+        // where the parameter values are stored
+        _paramValues: {},
+
+        hash: fxhash,
+        rand: fxrand,
+        preview: fxpreview,
+        isPreview: isFxpreview,
+        params: function(definition) {
+          // todo: maybe do some validation on the dev side ?
+          // or maybe not ?
+          this._params = definition
+          this._rawValues = deserializeParams(fxparams, definition)
+          this._paramValues = transformParamValues(this._rawValues, definition)
+        },
+        features: function(features) {
+          this._features = features
+        },
+        getFeature: function(id) {
+          return this._features[id]
+        },
+        getFeatures: function() {
+          return this._features
+        },
+        getParam: function(id) {
+          return this._paramValues[id]
+        },
+        getParams: function() {
+          return this._paramValues
+        },
+        getRawParam: function(id) {
+          return this._rawValues[id]
+        },
+        getRawParams: function() {
+          return this._rawValues
+        },
+        getDefinitions: function() {
+          return this._params
+        }
+      }
+      window.addEventListener("message", (event) => {
+        if (event.data === "fxhash_getHash") {
+          parent.postMessage({
+            id: "fxhash_getHash",
+            data: window.$fx.hash
+          }, "*")
+        }
+        
+        if (event.data === "fxhash_getFeatures") {
+          parent.postMessage({
+            id: "fxhash_getFeatures",
+            data: window.$fx.getFeatures()
+          }, "*")
+        }
+
+        if (event.data === "fxhash_getParams") {
+          parent.postMessage({
+            id: "fxhash_getParams",
+            data: window.$fx.getDefinitions()
+          }, "*")
+        }
+      })
+      // END NEW
+
       //---- /do not edit the following code
     </script>
 
@@ -37,8 +211,7 @@
 
     <!-- if you need to import js scripts do it here -->
   </head>
-  <body>
-
+  <body> 
     <script src="./index.js"></script>
   </body>
 </html>
