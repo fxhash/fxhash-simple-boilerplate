@@ -1,5 +1,3 @@
-> **⚠️ Disclaimer**: This project is still in development. Some changes will be introduced over the next weeks, so please use this project with caution.
-
 FXHASH Generative Token simplest boilerplate
 ================
 
