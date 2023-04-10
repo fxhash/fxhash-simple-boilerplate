@@ -7,8 +7,9 @@
       //---- do not edit the following code (you can indent as you wish)
       let search = new URLSearchParams(window.location.search)
       let alphabet = "123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ"
-      var fxhash = search.get('fxhash') || "oo" + Array(49).fill(0).map(_=>alphabet[(Math.random()*alphabet.length)|0]).join('')
       let b58dec = str=>[...str].reduce((p,c)=>p*alphabet.length+alphabet.indexOf(c)|0, 0)
+      // make fxrand from hash
+      var fxhash = search.get('fxhash') || "oo" + Array(49).fill(0).map(_=>alphabet[(Math.random()*alphabet.length)|0]).join('')
       let fxhashTrunc = fxhash.slice(2)
       let regex = new RegExp(".{" + ((fxhash.length/4)|0) + "}", 'g')
       let hashes = fxhashTrunc.match(regex).map(h => b58dec(h))
@@ -25,6 +26,13 @@
         }
       }
       var fxrand = sfc32(...hashes)
+      // make fxrandminter from minter address
+      var fxminter = search.get('fxminter') || "tz1" + Array(33).fill(0).map(_=>alphabet[(Math.random()*alphabet.length)|0]).join('')
+      let fxminterTrunc = fxminter.slice(3)
+      regex = new RegExp(".{" + ((fxminterTrunc.length/4)|0) + "}", 'g')
+      hashes = fxminterTrunc.match(regex).map(h => b58dec(h))
+      var fxrandminter = sfc32(...hashes)
+
       // true if preview mode active, false otherwise
       // you can append preview=1 to the URL to simulate preview active
       var isFxpreview = search.get('preview') === "1"
@@ -34,9 +42,6 @@
         // window.dispatchEvent(new Event("fxhash-preview"))
         // setTimeout(() => fxpreview(), 500)
       }
-      //
-      // NEW: v2 of the fxhash SDK lol
-      //
       // get the byte params from the URL
       let fxparams = search.get('fxparams')
       fxparams = fxparams ? fxparams.replace("0x", "") : fxparams
@@ -264,6 +269,10 @@
 
         hash: fxhash,
         rand: fxrand,
+
+        minter: fxminter,
+        randminter: fxrandminter,
+
         preview: fxpreview,
         isPreview: isFxpreview,
         params: function(definition) {
@@ -321,6 +330,7 @@
                 definitions: window.$fx.getDefinitions(),
                 values: window.$fx.getRawParams(),
               },
+              minter: window.$fx.minter,
             },
           }, "*")
         }
