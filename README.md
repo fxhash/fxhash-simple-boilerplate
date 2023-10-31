@@ -1,3 +1,6 @@
+> **Warning**
+> This project is now deprecated, as we have unified the stack of fxhash boilerplate in a [single, simple and cohesive boilerplate available here](https://github.com/fxhash/fxhash-boilerplate).
+
 FXHASH Generative Token simplest boilerplate
 ================
 
